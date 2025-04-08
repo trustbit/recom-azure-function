@@ -8,3 +8,20 @@ wheels/
 
 # Virtual environments
 .venv
+
+# IntelliJ idea
+.idea/
+
+# Tests / Coverage
+.pytest_cache/
+.coverage
+pytest-results.xml
+
+# ruff cached files
+.ruff_cache/
+
+# codebase flatfile to use as knowledge for claude/aider
+codebase.txt
+
+# MacOS files
+.DS_Store

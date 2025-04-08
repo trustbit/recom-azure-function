@@ -1,0 +1,11 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "STORAGE_CONTAINER": "power-converter-data",
+    "OPENAI_API_KEY": "your-openai-api-key",
+    "DOCUMENT_INTELLIGENCE_ENDPOINT": "your-document-intelligence-endpoint",
+    "DOCUMENT_INTELLIGENCE_KEY": "your-document-intelligence-key"
+  }
+}
