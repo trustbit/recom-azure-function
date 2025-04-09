@@ -1,12 +1,12 @@
-import json
-import logging
 import azure.functions as func
 import azure.durable_functions as df
 
-from shared.environment import AzureEnvironment
+# Create blueprint instance
+bp = func.Blueprint()
 
-
-def orchestrator_function(context: df.DurableOrchestrationContext):
+# --------------- Orchestrator Function ---------------
+@bp.orchestration_trigger(context_name="context")
+def orchestrator(context: df.DurableOrchestrationContext):
     """Main orchestrator for the data extraction pipeline"""
 
     # Get pipeline parameters
@@ -63,6 +63,3 @@ def orchestrator_function(context: df.DurableOrchestrationContext):
         results[f"{product_type}_validated"] = validate_result
 
     return results
-
-
-main = df.Orchestrator.create(orchestrator_function)

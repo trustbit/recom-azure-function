@@ -1,12 +1,13 @@
 import logging
-import json
-import pandas as pd
-import azure.functions as func
-from playwright.async_api import async_playwright
 import asyncio
+import azure.functions as func
+import pandas as pd
+from playwright.async_api import async_playwright
 from bs4 import BeautifulSoup
-
 from shared.environment import AzureEnvironment
+
+# Create blueprint instance
+bp = func.Blueprint()
 
 # URL templates for different manufacturers
 MANUFACTURER_URLS = {
@@ -23,7 +24,6 @@ MANUFACTURER_URLS = {
         "ac-dc-power-supplies": "https://www.xppower.com/products/ac-dc-power-supplies",
     },
 }
-
 
 async def parse_recom_series(page):
     """Parse RECOM power series from webpage"""
@@ -212,7 +212,7 @@ async def parse_xppower_series(page):
     return series_list
 
 
-async def scrape_series(manufacturer, product_type):
+async def scrape_series_async(manufacturer, product_type):
     """Scrape product series data from manufacturer website"""
     url = MANUFACTURER_URLS.get(manufacturer, {}).get(product_type)
     if not url:
@@ -241,20 +241,21 @@ async def scrape_series(manufacturer, product_type):
         return series_data
 
 
-def main(params) -> dict:
-    """Activity function triggered by the orchestrator"""
+@bp.activity_trigger(input_name="input")
+def scrape_series(input: dict) -> dict:
+    """Activity function to scrape series data"""
     logging.info("Scrape series function processing a request.")
 
     try:
-        # Get parameters from request
-        manufacturer = params.get("manufacturer", "recom")
-        product_type = params.get("product_type", "dc-dc-converters")
+        # Get parameters from input
+        manufacturer = input.get("manufacturer", "recom")
+        product_type = input.get("product_type", "dc-dc-converters")
 
         # Initialize environment
         env = AzureEnvironment()
 
         # Run scraper
-        series_data = asyncio.run(scrape_series(manufacturer, product_type))
+        series_data = asyncio.run(scrape_series_async(manufacturer, product_type))
 
         # Convert to DataFrame
         df = pd.DataFrame(series_data)
@@ -277,6 +278,6 @@ def main(params) -> dict:
         return {
             "success": False,
             "error": str(e),
-            "manufacturer": params.get("manufacturer", "recom"),
-            "product_type": params.get("product_type", "dc-dc-converters"),
+            "manufacturer": input.get("manufacturer", "recom"),
+            "product_type": input.get("product_type", "dc-dc-converters"),
         }
