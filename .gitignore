@@ -27,3 +27,7 @@ codebase.txt
 .DS_Store
 
 terraform/
+/data/meanwell/
+/data/recom/
+/data/traco/
+/data/xp/
