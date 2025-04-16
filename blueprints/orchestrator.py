@@ -4,6 +4,7 @@ import azure.durable_functions as df
 # Create blueprint instance
 bp = func.Blueprint()
 
+
 # --------------- Orchestrator Function ---------------
 @bp.orchestration_trigger(context_name="context")
 def orchestrator(context: df.DurableOrchestrationContext):

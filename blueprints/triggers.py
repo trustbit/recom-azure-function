@@ -6,10 +6,13 @@ import azure.durable_functions as df
 # Create blueprint instance
 bp = func.Blueprint()
 
+
 # --------------- Blob Trigger Function ---------------
-@bp.blob_trigger(arg_name="myblob", path="recom-data", connection="AzureWebJobsStorage") 
+@bp.blob_trigger(arg_name="myblob", path="recom-data", connection="AzureWebJobsStorage")
 @bp.durable_client_input(client_name="starter")
-async def blob_trigger(myblob: func.InputStream, starter: df.DurableOrchestrationClient):
+async def blob_trigger(
+    myblob: func.InputStream, starter: df.DurableOrchestrationClient
+):
     """Blob trigger function that starts the orchestrator when a new blob is uploaded"""
     logging.info(f"Python blob trigger function processed blob: {myblob.name}")
 
@@ -40,10 +43,13 @@ async def blob_trigger(myblob: func.InputStream, starter: df.DurableOrchestratio
         logging.error(f"Error starting orchestration from blob trigger: {str(e)}")
         raise
 
+
 # --------------- HTTP Trigger to Start Orchestrator ---------------
 @bp.route(route="startOrchestrator", auth_level=func.AuthLevel.FUNCTION)
 @bp.durable_client_input(client_name="starter")
-async def start_orchestrator(req: func.HttpRequest, starter: df.DurableOrchestrationClient) -> func.HttpResponse:
+async def start_orchestrator(
+    req: func.HttpRequest, starter: df.DurableOrchestrationClient
+) -> func.HttpResponse:
     """HTTP trigger function that starts the orchestrator"""
     logging.info("Python HTTP trigger function processed a request.")
 
@@ -70,11 +76,8 @@ async def start_orchestrator(req: func.HttpRequest, starter: df.DurableOrchestra
         return func.HttpResponse(
             body=json.dumps({"id": instance_id}),
             mimetype="application/json",
-            status_code=202
+            status_code=202,
         )
     except Exception as e:
         logging.error(f"Error starting orchestration: {str(e)}")
-        return func.HttpResponse(
-            body=f"Error: {str(e)}",
-            status_code=500
-        )
+        return func.HttpResponse(body=f"Error: {str(e)}", status_code=500)

@@ -32,3 +32,6 @@ terraform/
 /data/traco/
 /data/xp/
 /data/converters.db
+
+# local secrets file
+.env.secret

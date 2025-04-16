@@ -25,6 +25,7 @@ MANUFACTURER_URLS = {
     },
 }
 
+
 async def parse_recom_series(page):
     """Parse RECOM power series from webpage"""
     # Wait for series items to load

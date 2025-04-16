@@ -15,4 +15,7 @@ dependencies = [
     "playwright>=1.51.0",
     "pydantic>=2.11.2",
     "requests>=2.32.3",
+    "pyodbc>=5.2.0",
+    "dotenv>=0.9.9",
+    "sqlalchemy>=2.0.40",
 ]
