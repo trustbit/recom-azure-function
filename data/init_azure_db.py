@@ -2,7 +2,6 @@ import os
 import pathlib
 
 from connect_mssql import connect_mssql
-from dotenv import load_dotenv
 from datetime import datetime
 
 
@@ -18,6 +17,16 @@ def create_tables(
 
     schema_id: int = cursor.fetchone()[0]
 
+    # Product Series Table
+    cursor.execute(f"""
+       IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'product_series' and schema_id = ?)
+    BEGIN
+        CREATE TABLE {schema}.product_series (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            name NVARCHAR(255) UNIQUE
+        );
+    END""", (schema_id,))
+
     # Main converters table
     cursor.execute(f"""
    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'converters' and schema_id = ?)
@@ -25,7 +34,7 @@ BEGIN
     CREATE TABLE {schema}.converters (
         id INT IDENTITY(1,1) PRIMARY KEY,
         company NVARCHAR(255),
-        product_series NVARCHAR(255),
+        product_series_id INT,
         part_number NVARCHAR(255) UNIQUE,
         converter_type NVARCHAR(255),
         ac_voltage_input_min FLOAT,
@@ -55,9 +64,32 @@ BEGIN
         operating_temp_max FLOAT,
         created_at DATETIME,
         updated_at DATETIME
+        FOREIGN KEY (product_series_id) REFERENCES {schema}.product_series(id)
     );
 END 
     """, (schema_id,))
+
+    # New Crosses Table
+    cursor.execute(
+        f"""
+       IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'crosses' and schema_id = ?)
+    BEGIN
+        CREATE TABLE {schema}.crosses (
+            id INT IDENTITY(1,1) PRIMARY KEY,
+            product_series_id INT NOT NULL,
+            product_series_cross_id INT NOT NULL,
+            level INT,
+            notes NVARCHAR(MAX), 
+            CONSTRAINT UQ_crosses_relationship UNIQUE (product_series_id, product_series_cross_id, level), 
+            CONSTRAINT FK_crosses_product_series FOREIGN KEY (product_series_id) 
+                REFERENCES {schema}.product_series(id) ON DELETE NO ACTION, 
+            CONSTRAINT FK_crosses_cross_product_series FOREIGN KEY (product_series_cross_id) 
+                REFERENCES {schema}.product_series(id) ON DELETE NO ACTION
+        );
+    END
+    """,
+        (schema_id,),
+    )
 
     # Certifications table
     cursor.execute(f"""
@@ -65,7 +97,7 @@ END
 BEGIN
     CREATE TABLE {schema}.certifications (
         id INT IDENTITY(1,1) PRIMARY KEY,
-        name NVARCHAR(255) UNIQUE
+        name NVARCHAR(255) COLLATE Latin1_General_CS_AS UNIQUE
     );
 END
 """, (schema_id,))
@@ -91,7 +123,7 @@ BEGIN
         duration_sec INT,
         unit NVARCHAR(50),
         voltage FLOAT,
-        FOREIGN KEY (converter_id) REFERENCES converters(id)
+        FOREIGN KEY (converter_id) REFERENCES {schema}.converters(id)
     );
 END 
     """, (schema_id,))
@@ -104,8 +136,8 @@ BEGIN
         converter_id INT,
         certification_id INT,
         PRIMARY KEY (converter_id, certification_id),
-        FOREIGN KEY (converter_id) REFERENCES converters(id),
-        FOREIGN KEY (certification_id) REFERENCES certifications(id)
+        FOREIGN KEY (converter_id) REFERENCES {schema}.converters(id),
+        FOREIGN KEY (certification_id) REFERENCES {schema}.certifications(id)
     );
 END 
     """, (schema_id,))
@@ -118,8 +150,8 @@ BEGIN
         converter_id INT,
         protection_id INT,
         PRIMARY KEY (converter_id, protection_id),
-        FOREIGN KEY (converter_id) REFERENCES converters(id),
-        FOREIGN KEY (protection_id) REFERENCES protections(id)
+        FOREIGN KEY (converter_id) REFERENCES {schema}.converters(id),
+        FOREIGN KEY (protection_id) REFERENCES {schema}.protections(id)
     );
 END 
     """, (schema_id,))
@@ -133,7 +165,7 @@ BEGIN
         converter_id INT,
         pin_id NVARCHAR(50),
         pin_type NVARCHAR(100),
-        FOREIGN KEY (converter_id) REFERENCES converters(id)
+        FOREIGN KEY (converter_id) REFERENCES {schema}.converters(id)
     );
 END 
     """, (schema_id,))
@@ -149,7 +181,7 @@ BEGIN
         threshold_unit NVARCHAR(20),
         unit NVARCHAR(20),
         rate FLOAT,
-        FOREIGN KEY (converter_id) REFERENCES converters(id)
+        FOREIGN KEY (converter_id) REFERENCES {schema}.converters(id)
     );
 END
     """, (schema_id,))
@@ -157,7 +189,6 @@ END
     # Create indexes for better query performance
     for index_name in [
         "company",
-        "product_series",
         "part_number",
         "converter_type",
         "power",
