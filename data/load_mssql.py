@@ -11,22 +11,18 @@ engine = get_mssql_engine()
 create_tables(schema="dbo")
 
 
-def empty_table(
-        table_name: str,
-        schema_name: str,
-        db_engine: Engine = engine):
-
+def empty_table(table_name: str, schema_name: str, db_engine: Engine = engine):
     with db_engine.connect() as connection:
         connection.execute(text(f"DELETE FROM [{schema_name}].[{table_name}]"))
         connection.commit()
 
 
 def load_table(
-        data: pd.DataFrame,
-        table_name: str,
-        schema_name: str = "dbo",
-        db_engine: Engine = engine):
-
+    data: pd.DataFrame,
+    table_name: str,
+    schema_name: str = "dbo",
+    db_engine: Engine = engine,
+):
     if "id" in data.columns:
         data = data.drop(columns=["id"])
 
@@ -35,15 +31,13 @@ def load_table(
         con=db_engine,
         schema=schema_name,
         if_exists="append",
-        index=False)
+        index=False,
+    )
 
 
 def migrate_table(
-        table_name: str,
-        schema_from: str,
-        schema_to: str,
-        clear_target_table: bool):
-
+    table_name: str, schema_from: str, schema_to: str, clear_target_table: bool
+):
     data = pd.read_sql_table(table_name=table_name, schema=schema_from, con=engine)
 
     if clear_target_table:
@@ -60,9 +54,7 @@ def load_json_data(company: str):
     return df
 
 
-
 if __name__ == "__main__":
-
     tables = [
         "product_series",
         "certifications",
@@ -71,11 +63,16 @@ if __name__ == "__main__":
         "power_derating",
         "pins",
         "isolation_tests",
-        "converter_certifications"
+        "converter_certifications",
     ]
 
     for table in tables:
         print(table)
-        migrate_table(table_name=table, schema_from="crosslist_test", schema_to="dbo", clear_target_table=True)
+        migrate_table(
+            table_name=table,
+            schema_from="crosslist_test",
+            schema_to="dbo",
+            clear_target_table=True,
+        )
 
     # load_table(data=series[["name"]], table_name="product_series", schema_name="crosslist_test")

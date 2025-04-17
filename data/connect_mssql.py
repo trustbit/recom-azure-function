@@ -10,11 +10,13 @@ from dotenv import load_dotenv
 dotenv_path = pathlib.Path(__file__).parent.parent / ".env.secret"
 load_dotenv(dotenv_path=dotenv_path)
 
-def connect_mssql(server: str = os.environ["MSSQL_HOST"],
-                  username: str = os.environ["MSSQL_USERNAME"],
-                  password: str = os.environ["MSSQL_PASSWORD"],
-                  database: str = "recom-tat-db-test") -> tuple[pyodbc.Connection, pyodbc.Cursor]:
 
+def connect_mssql(
+    server: str = os.environ["MSSQL_HOST"],
+    username: str = os.environ["MSSQL_USERNAME"],
+    password: str = os.environ["MSSQL_PASSWORD"],
+    database: str = "recom-tat-db-test",
+) -> tuple[pyodbc.Connection, pyodbc.Cursor]:
     conn_string = f"Driver={{ODBC Driver 18 for SQL Server}};Server={server};Database={database};Uid={username};Pwd={password};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
 
     conn = pyodbc.connect(conn_string)
@@ -24,11 +26,11 @@ def connect_mssql(server: str = os.environ["MSSQL_HOST"],
 
 
 def get_mssql_engine(
-        server: str = os.environ["MSSQL_HOST"],
-        username: str = os.environ["MSSQL_USERNAME"],
-        password: str = os.environ["MSSQL_PASSWORD"],
-        database: str = "recom-tat-db-test") -> Engine:
-
+    server: str = os.environ["MSSQL_HOST"],
+    username: str = os.environ["MSSQL_USERNAME"],
+    password: str = os.environ["MSSQL_PASSWORD"],
+    database: str = "recom-tat-db-test",
+) -> Engine:
     url_object = URL.create(
         drivername="mssql+pyodbc",
         username=username,
@@ -39,13 +41,12 @@ def get_mssql_engine(
             "driver": "ODBC Driver 18 for SQL Server",
             "TrustServerCertificate": "yes",
             "Encrypt": "yes",
-        }
+        },
     )
 
     engine = create_engine(url_object)
 
-    return  engine
-
+    return engine
 
 
 if __name__ == "__main__":
@@ -57,4 +58,3 @@ if __name__ == "__main__":
     df = pd.read_sql_table(table_name="converters", con=test_engine)
 
     print(test_engine)
-

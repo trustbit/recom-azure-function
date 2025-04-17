@@ -1,61 +1,61 @@
 import pathlib
 import pandas as pd
+from sqlalchemy.engine.base import Engine
 from connect_mssql import connect_mssql, get_mssql_engine
 
 
-crosses_path = pathlib.Path(__file__).parent / "crosses.csv"
-
-with open(crosses_path, mode='r') as file:
-    df = pd.read_csv(file)
-
-df = df[["Traco product", "Recom product", "Level"]].copy()
-
 engine = get_mssql_engine()
 
-product_series = pd.read_sql_table(table_name="product_series", schema="crosslist_test", con=engine)
-product_series = product_series.dropna(subset="name")
-
-map_dict = dict(zip(product_series["name"], product_series["id"]))
 
 
-# def create_cross_table():
-#
-#     conn, cursor = connect_mssql()
-#
-#     cursor.execute("""
-#     IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'crosses')
-#     BEGIN
-#         CREATE TABLE crosses (
-#         id INT IDENTITY(1,1) PRIMARY KEY,
-#
-#         recom_product NVARCHAR(255),
-#         traco_product NVARCHAR(255),
-#         level INT
-#          );
-#     END
-#    """)
-#
-#     conn.commit()
+def create_cross_data_frame(
+        crosses_path: pathlib.Path = pathlib.Path(__file__).parent / "crosses.csv",
+) -> pd.DataFrame:
+
+    with open(crosses_path, mode="r") as file:
+        df = pd.read_csv(file)
+
+    df = df[["Traco product", "Recom product", "Level"]].copy()
+
+    return df
 
 
-def insert_cross(data: dict, schema: str):
+def insert_cross(data: pd.DataFrame, schema: str, db_engine: Engine = engine):
 
     conn, cursor = connect_mssql()
+    product_series = pd.read_sql_table(
+        table_name="product_series", con=db_engine, schema=schema
+    )
 
-    insert_data = (
-        map_dict[data["Recom product"]],
-        map_dict[data["Traco product"]],
-        int(data["Level"]),
-        ""
-         )
+    product_series = product_series.dropna(subset="name")
+    map_dict = dict(zip(product_series["name"], product_series["id"]))
 
-    print(insert_data)
+    for record in data.loc[
+        (~data["Level"].isna())
+        & (~data["Recom product"].isna())
+        & (~data["Traco product"].isna())
+    ].to_dict(orient="records"):
 
-    cursor.execute(f"""
-    INSERT INTO {schema}.crosses (
-    product_series_id, product_series_cross_id, level, notes
-    ) VALUES (?, ?, ?, ?);
-    """, insert_data)
+        try:
+            insert_data = (
+                map_dict[record["Recom product"]],
+                map_dict[record["Traco product"]],
+                int(record["Level"]),
+                "",)
+
+        except KeyError:
+            continue
+
+        print(insert_data)
+
+        cursor.execute(
+            f""" 
+            INSERT INTO {schema}.crosses ( 
+            product_series_id, product_series_cross_id, level, notes 
+            ) VALUES (?, ?, ?, ?);
+""",
+            insert_data,
+        )
 
     conn.commit()
 
@@ -63,10 +63,10 @@ def insert_cross(data: dict, schema: str):
 if __name__ == "__main__":
     from load_mssql import empty_table
 
-    empty_table(table_name="crosses", schema_name="recom")
+    test_schema = "insert_test"
 
-    # create_cross_table()
+    empty_table(table_name="crosses", schema_name=test_schema)
 
-    for i in df.loc[(~df["Level"].isna()) & (~df["Recom product"].isna()) & (~df["Traco product"].isna())].to_dict(orient='records'):
-        if i["Recom product"] in map_dict.keys() and i["Traco product"] in map_dict.keys():
-            insert_cross(data=i, schema="recom")
+    cross_data = create_cross_data_frame()
+    insert_cross(data=cross_data, schema=test_schema)
+

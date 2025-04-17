@@ -5,30 +5,34 @@ from connect_mssql import connect_mssql
 from datetime import datetime
 
 
-def create_tables(
-        schema: str = "dbo"
-):
-
+def create_tables(schema: str = "dbo"):
     conn, cursor = connect_mssql()
 
-    cursor.execute("""
+    cursor.execute(
+        """
     select schema_id from sys.schemas where name = ?
-    """, schema)
+    """,
+        schema,
+    )
 
     schema_id: int = cursor.fetchone()[0]
 
     # Product Series Table
-    cursor.execute(f"""
+    cursor.execute(
+        f"""
        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'product_series' and schema_id = ?)
     BEGIN
         CREATE TABLE {schema}.product_series (
             id INT IDENTITY(1,1) PRIMARY KEY,
             name NVARCHAR(255) UNIQUE
         );
-    END""", (schema_id,))
+    END""",
+        (schema_id,),
+    )
 
     # Main converters table
-    cursor.execute(f"""
+    cursor.execute(
+        f"""
    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'converters' and schema_id = ?)
 BEGIN
     CREATE TABLE {schema}.converters (
@@ -67,7 +71,9 @@ BEGIN
         FOREIGN KEY (product_series_id) REFERENCES {schema}.product_series(id)
     );
 END 
-    """, (schema_id,))
+    """,
+        (schema_id,),
+    )
 
     # New Crosses Table
     cursor.execute(
@@ -92,7 +98,8 @@ END
     )
 
     # Certifications table
-    cursor.execute(f"""
+    cursor.execute(
+        f"""
    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'certifications' and schema_id = ?)
 BEGIN
     CREATE TABLE {schema}.certifications (
@@ -100,10 +107,13 @@ BEGIN
         name NVARCHAR(255) COLLATE Latin1_General_CS_AS UNIQUE
     );
 END
-""", (schema_id,))
+""",
+        (schema_id,),
+    )
 
     # Protections table
-    cursor.execute(f"""
+    cursor.execute(
+        f"""
    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'protections' and schema_id = ?)
 BEGIN
     CREATE TABLE {schema}.protections (
@@ -111,10 +121,13 @@ BEGIN
         name NVARCHAR(255) UNIQUE
     );
 END 
-    """, (schema_id,))
+    """,
+        (schema_id,),
+    )
 
     # Isolation test values table
-    cursor.execute(f"""
+    cursor.execute(
+        f"""
    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'isolation_tests' and schema_id = ?)
 BEGIN
     CREATE TABLE {schema}.isolation_tests (
@@ -126,10 +139,13 @@ BEGIN
         FOREIGN KEY (converter_id) REFERENCES {schema}.converters(id)
     );
 END 
-    """, (schema_id,))
+    """,
+        (schema_id,),
+    )
 
     # Junction table for converters and certifications
-    cursor.execute(f"""
+    cursor.execute(
+        f"""
    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'converter_certifications' and schema_id = ?)
 BEGIN
     CREATE TABLE {schema}.converter_certifications (
@@ -140,10 +156,13 @@ BEGIN
         FOREIGN KEY (certification_id) REFERENCES {schema}.certifications(id)
     );
 END 
-    """, (schema_id,))
+    """,
+        (schema_id,),
+    )
 
     # Junction table for converters and protections
-    cursor.execute(f"""
+    cursor.execute(
+        f"""
    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'converter_protections' and schema_id = ?)
 BEGIN
     CREATE TABLE {schema}.converter_protections (
@@ -154,10 +173,13 @@ BEGIN
         FOREIGN KEY (protection_id) REFERENCES {schema}.protections(id)
     );
 END 
-    """, (schema_id,))
+    """,
+        (schema_id,),
+    )
 
     # Pin configuration table
-    cursor.execute(f"""
+    cursor.execute(
+        f"""
    IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'pins' and schema_id = ?)
 BEGIN
     CREATE TABLE {schema}.pins (
@@ -168,10 +190,13 @@ BEGIN
         FOREIGN KEY (converter_id) REFERENCES {schema}.converters(id)
     );
 END 
-    """, (schema_id,))
+    """,
+        (schema_id,),
+    )
 
     # Power derating table
-    cursor.execute(f"""
+    cursor.execute(
+        f"""
     IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'power_derating' and schema_id = ?)
 BEGIN
     CREATE TABLE {schema}.power_derating (
@@ -184,7 +209,9 @@ BEGIN
         FOREIGN KEY (converter_id) REFERENCES {schema}.converters(id)
     );
 END
-    """, (schema_id,))
+    """,
+        (schema_id,),
+    )
 
     # Create indexes for better query performance
     for index_name in [
@@ -226,6 +253,7 @@ END"""
 #     conn.commit()
 #     conn.close()
 #
+
 
 def get_or_create_certification(cursor, cert_name):
     cursor.execute("SELECT id FROM certifications WHERE name = ?", (cert_name,))
@@ -274,7 +302,6 @@ def get_or_create_protection(cursor, protection_name):
 
 
 def insert_converter(company, data):
-
     conn, cursor = connect_mssql()
 
     current_time = datetime.now()
