@@ -69,4 +69,4 @@ if __name__ == "__main__":
 
     for i in df.loc[(~df["Level"].isna()) & (~df["Recom product"].isna()) & (~df["Traco product"].isna())].to_dict(orient='records'):
         if i["Recom product"] in map_dict.keys() and i["Traco product"] in map_dict.keys():
-            insert_cross(data=i, schema="crosslist_test")
+            insert_cross(data=i, schema="recom")
