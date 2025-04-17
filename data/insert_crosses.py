@@ -63,7 +63,7 @@ def insert_cross(data: pd.DataFrame, schema: str, db_engine: Engine = engine):
 if __name__ == "__main__":
     from load_mssql import empty_table
 
-    test_schema = "insert_test"
+    test_schema = "crosslist_test"
 
     empty_table(table_name="crosses", schema_name=test_schema)
 

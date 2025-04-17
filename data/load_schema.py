@@ -404,5 +404,5 @@ def create_complete_schema(
 
 if __name__ == "__main__":
     create_complete_schema(
-        company_names=["recom", "traco", "meanwell", "xp"], schema_name="insert_test"
+        company_names=["recom", "traco", "meanwell", "xp"], schema_name="crosslist_test"
     )

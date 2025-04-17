@@ -1,4 +1,7 @@
 create view crosslist_test.cross_series as
+
+
+
 select c.id,
        product_series_id as cross_left_id,
        product_series_cross_id as cross_right_id,
@@ -13,7 +16,7 @@ inner join crosslist_test.product_series as ps_c on ps_c.id = c.product_series_c
 
 create view crosslist_test.cross_part_number as
 
-with cross_series as (select c.id,
+   with cross_series as (select c.id,
        product_series_id as cross_left_id,
        product_series_cross_id as cross_right_id,
        level as cross_level,
@@ -22,8 +25,27 @@ with cross_series as (select c.id,
        ps_c.name as cross_right_name
 from crosslist_test.crosses as c
 inner join crosslist_test.product_series as ps on ps.id = c.product_series_id
-inner join crosslist_test.product_series as ps_c on ps_c.id = c.product_series_cross_id)
+inner join crosslist_test.product_series as ps_c on ps_c.id = c.product_series_cross_id),
 
+        converters_certificate_mapping as (
+    select
+        converters.id,
+        string_agg(name, ',') as certifications
+    from crosslist_test.converters
+        inner join crosslist_test.converter_certifications as cc on converters.id = cc.converter_id
+        inner join crosslist_test.certifications as c on cc.certification_id = c.id
+    group by converters.id),
+
+    converters_protections_mapping as (
+        select
+            converters.id,
+        string_agg(p.name, ',') as protections
+        from crosslist_test.converters
+        inner join crosslist_test.converter_protections as cp on converters.id = cp.converter_id
+        inner join crosslist_test.protections as p on cp.protection_id = p.id
+    group by converters.id),
+
+product_cross as (
 select cross_series.id,
        cross_left_id,
        cross_right_id,
@@ -35,7 +57,6 @@ select cross_series.id,
        c_left.company as left_company,
        c_left.part_number as left_part_number ,
        c_left.converter_type as left_converter_type ,
-       string_agg(certs_left.) as protections,
        c_left.ac_voltage_input_min as left_ac_voltage_input_min ,
        c_left.ac_voltage_input_max as left_ac_voltage_input_max ,
        c_left.dc_voltage_input_min as left_dc_voltage_input_min ,
@@ -93,9 +114,25 @@ select cross_series.id,
        c_right.operating_temp_min as  right_operating_temp_min ,
        c_right.operating_temp_max as  right_operating_temp_max ,
        c_right.created_at as  right_created_at,
-       c_right.updated_at as right_updated_at
+       c_right.updated_at as right_updated_at,
+       cmp_left.certifications as certifications_cross_left,
+       cpm_left.protections as protections_cross_left,
+       cmp_left.certifications as certifications_cross_right,
+       cpm_right.protections as protections_cross_right
+
+
 from cross_series
 
 inner join crosslist_test.converters as c_left on cross_series.cross_left_id = c_left.product_series_id
-inner join crosslist_test.converters as c_right on cross_series.cross_right_id = c_right.product_series_id;
+inner join crosslist_test.converters as c_right on cross_series.cross_right_id = c_right.product_series_id
 
+    left outer join converters_certificate_mapping as cmp_left on cross_left_id = cmp_left.id
+    left outer join converters_certificate_mapping as cmp_right on cross_right_id = cmp_left.id
+
+left outer join converters_protections_mapping as cpm_left on cross_left_id = cpm_left.id
+left outer join converters_protections_mapping as cpm_right on cross_right_id = cpm_right.id
+
+)
+
+select * from product_cross
+;
