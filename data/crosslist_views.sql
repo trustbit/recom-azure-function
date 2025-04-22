@@ -1,7 +1,5 @@
 create view crosslist_test.cross_series as
 
-
-
 select c.id,
        product_series_id as cross_left_id,
        product_series_cross_id as cross_right_id,
@@ -135,4 +133,71 @@ left outer join converters_protections_mapping as cpm_right on cross_right_id = 
 )
 
 select * from product_cross
+;
+
+create view crosslist_test.find_crosses as
+
+with converters_certificate_mapping as (
+    select
+        converters.id,
+        string_agg(name, ',') as certifications
+    from crosslist_test.converters
+        inner join crosslist_test.converter_certifications as cc on converters.id = cc.converter_id
+        inner join crosslist_test.certifications as c on cc.certification_id = c.id
+    group by converters.id),
+
+    converters_protections_mapping as (
+        select
+            converters.id,
+        string_agg(p.name, ',') as protections
+        from crosslist_test.converters
+        inner join crosslist_test.converter_protections as cp on converters.id = cp.converter_id
+        inner join crosslist_test.protections as p on cp.protection_id = p.id
+    group by converters.id)
+
+select
+--     product_series.id,
+       name,
+       c.id,
+       company,
+       product_series_id,
+       part_number,
+       converter_type,
+       ac_voltage_input_min,
+       ac_voltage_input_max,
+       dc_voltage_input_min,
+       dc_voltage_input_max,
+       input_voltage_tolerance,
+       power,
+       is_regulated,
+       regulation_voltage_range,
+       efficiency,
+       voltage_output_1,
+       voltage_output_2,
+       voltage_output_3,
+       i_out1,
+       i_out2,
+       i_out3,
+       output_type,
+       pin_count,
+       mounting_type,
+       connection_type,
+       dimensions_unit,
+       dimensions_length,
+       dimensions_width,
+       dimensions_height,
+       operating_temp_min,
+       operating_temp_max,
+       created_at,
+       updated_at,
+--        cpm.id,
+       protections,
+--        ccm.id,
+       certifications
+from crosslist_test.product_series
+    inner join crosslist_test.converters c on product_series.id = c.product_series_id
+inner join converters_protections_mapping as cpm on c.id = cpm.id
+         inner join converters_certificate_mapping as ccm on ccm.id = c.id
+
+--where product_series.name = 'REM1'
 ;
