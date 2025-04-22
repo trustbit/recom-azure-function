@@ -1,12 +1,18 @@
 import os
 import pathlib
-
+from pyodbc import Connection, Cursor
 from connect_mssql import connect_mssql
 from datetime import datetime
 
 
-def create_tables(schema: str = "dbo"):
-    conn, cursor = connect_mssql()
+co, cu = connect_mssql()
+
+
+def create_tables(
+    conn: Connection = co,
+    cursor: Cursor = cu,
+    schema: str = "dbo",
+):
 
     cursor.execute(
         """

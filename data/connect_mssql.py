@@ -17,7 +17,7 @@ def connect_mssql(
     password: str = os.environ["MSSQL_PASSWORD"],
     database: str = "recom-tat-db-test",
 ) -> tuple[pyodbc.Connection, pyodbc.Cursor]:
-    conn_string = f"Driver={{ODBC Driver 18 for SQL Server}};Server={server};Database={database};Uid={username};Pwd={password};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
+    conn_string = f"Driver={{ODBC Driver 18 for SQL Server}};Server={server};Database={database};Uid={username};Pwd={password};Encrypt=yes;TrustServerCertificate=yes;Connection Timeout=30;"
 
     conn = pyodbc.connect(conn_string)
     cursor = conn.cursor()
@@ -52,9 +52,19 @@ def get_mssql_engine(
 if __name__ == "__main__":
     import pandas as pd
 
-    t_conn, t_cursor = connect_mssql()
+    t_conn, t_cursor = connect_mssql(
+        server=os.environ["MSSQL_HOST_RECOM"],
+        username=os.environ["MSSQL_USERNAME_RECOM"],
+        password=os.environ["MSSQL_PASSWORD_RECOM"],
+        database="Time2Act"
+    )
 
-    test_engine = get_mssql_engine()
-    df = pd.read_sql_table(table_name="converters", con=test_engine)
-
+    test_engine = get_mssql_engine(
+        server=os.environ["MSSQL_HOST_RECOM"],
+        username=os.environ["MSSQL_USERNAME_RECOM"],
+        password=os.environ["MSSQL_PASSWORD_RECOM"],
+        database="Time2Act"
+    )
+    # df = pd.read_sql_table(table_name="converters", con=test_engine)
+    #
     print(test_engine)

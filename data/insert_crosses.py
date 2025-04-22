@@ -1,10 +1,10 @@
+import os
 import pathlib
 import pandas as pd
 from sqlalchemy.engine.base import Engine
+from pyodbc import Cursor, Connection
 from connect_mssql import connect_mssql, get_mssql_engine
 
-
-engine = get_mssql_engine()
 
 
 
@@ -20,9 +20,14 @@ def create_cross_data_frame(
     return df
 
 
-def insert_cross(data: pd.DataFrame, schema: str, db_engine: Engine = engine):
+def insert_cross(
+        data: pd.DataFrame,
+        schema: str,
+        db_engine: Engine,
+        conn: Connection,
+        cursor: Cursor,
+):
 
-    conn, cursor = connect_mssql()
     product_series = pd.read_sql_table(
         table_name="product_series", con=db_engine, schema=schema
     )
@@ -63,10 +68,22 @@ def insert_cross(data: pd.DataFrame, schema: str, db_engine: Engine = engine):
 if __name__ == "__main__":
     from load_mssql import empty_table
 
-    test_schema = "crosslist_test"
+    engine = get_mssql_engine(
+        server=os.environ["MSSQL_HOST_RECOM"],
+        username=os.environ["MSSQL_USERNAME_RECOM"],
+        password=os.environ["MSSQL_PASSWORD_RECOM"],
+        database="Time2Act"
+    )
 
-    empty_table(table_name="crosses", schema_name=test_schema)
+    co, cu = connect_mssql(
+        server=os.environ["MSSQL_HOST_RECOM"],
+        username=os.environ["MSSQL_USERNAME_RECOM"],
+        password=os.environ["MSSQL_PASSWORD_RECOM"],
+        database="Time2Act")
+
+    test_schema = "crosslist"
+
+    empty_table(table_name="crosses", schema_name=test_schema, db_engine=engine)
 
     cross_data = create_cross_data_frame()
-    insert_cross(data=cross_data, schema=test_schema)
-
+    insert_cross(data=cross_data, schema=test_schema, conn=co, cursor=cu, db_engine=engine)

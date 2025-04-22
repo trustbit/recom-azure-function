@@ -7,11 +7,10 @@ from products_data import load_products
 
 
 engine = get_mssql_engine()
-
 create_tables(schema="dbo")
 
 
-def empty_table(table_name: str, schema_name: str, db_engine: Engine = engine):
+def empty_table(table_name: str, schema_name: str, db_engine: Engine):
     with db_engine.connect() as connection:
         connection.execute(text(f"DELETE FROM [{schema_name}].[{table_name}]"))
         connection.commit()

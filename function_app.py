@@ -1,4 +1,5 @@
 import azure.functions as func
+import azure.durable_functions as df
 import logging
 
 # Import blueprints
@@ -10,6 +11,7 @@ from blueprints.pdf_handler import bp as pdf_bp
 from blueprints.data_processor import bp as data_bp
 
 # Create the main function app
+# app = df.DFApp()
 app = func.FunctionApp()
 
 # Register all blueprint functions

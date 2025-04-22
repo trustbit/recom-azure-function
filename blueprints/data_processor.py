@@ -3,7 +3,7 @@ import re
 import azure.functions as func
 import pandas as pd
 from shared.environment import AzureEnvironment
-from shared.model import Product, Series, PowerConverter
+from shared.model import Product, Series, PowerConverterModel
 
 # Create blueprint instance
 bp = func.Blueprint()

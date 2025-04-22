@@ -19,4 +19,7 @@ dependencies = [
     "dotenv>=0.9.9",
     "sqlalchemy>=2.0.40",
     "jupyterlab>=4.4.0",
+    "pypdf2>=3.0.1",
+    "frontend>=0.0.3",
+    "pymupdf>=1.25.5",
 ]

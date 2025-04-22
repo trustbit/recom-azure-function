@@ -1,4 +1,8 @@
+import os
+from pyodbc import Connection, Cursor
 from datetime import datetime
+
+from data.connect_mssql import connect_mssql
 from init_azure_db import create_tables
 from sqlalchemy.engine.base import Engine
 import pandas as pd
@@ -6,7 +10,6 @@ from connect_mssql import get_mssql_engine
 from load_mssql import empty_table, load_table, load_json_data
 
 
-engine = get_mssql_engine()
 
 
 def expand_list_of_dicts(
@@ -30,7 +33,7 @@ def expand_list_of_dicts(
 def map_converter_id(
     input_data: pd.DataFrame,
     schema_name: str,
-    db_engine: Engine = engine,
+    db_engine: Engine,
     mapping_column_name: str = "part_number",
 ) -> pd.DataFrame:
     mapping_df = pd.read_sql_table(
@@ -51,7 +54,7 @@ def map_converter_id(
 def map_table_id(
     input_data: pd.DataFrame,
     schema_name: str,
-    db_engine: Engine = engine,
+    db_engine: Engine,
     mapping_config: dict | None = None,
 ) -> pd.DataFrame:
     if mapping_config is None:
@@ -80,9 +83,9 @@ def map_table_id(
 def upsert_table(
     data: pd.DataFrame,
     table_name: str,
+        db_engine: Engine,
     column_identifier: str | None = None,
     schema: str = "recom",
-    db_engine: Engine = engine,
 ):
     # get existing products series
     df_series = pd.read_sql_table(table_name=table_name, schema=schema, con=db_engine)
@@ -154,7 +157,7 @@ def create_protections_data(input_data: pd.DataFrame) -> pd.DataFrame:
 
 
 def create_converters_data(
-    input_data: pd.DataFrame, company: str, schema: str, db_engine: Engine = engine
+    input_data: pd.DataFrame, company: str, schema: str, db_engine: Engine
 ) -> pd.DataFrame:
     result = input_data.copy()
 
@@ -227,18 +230,18 @@ def create_converters_data(
     return result[res_columns].copy().drop_duplicates(subset="part_number")
 
 
-def create_isolation_tests_data(input_data: pd.DataFrame, schema: str) -> pd.DataFrame:
+def create_isolation_tests_data(input_data: pd.DataFrame, schema: str, db_engine: Engine) -> pd.DataFrame:
     result = expand_list_of_dicts(
         input_data[["isolation_test_voltage", "part_number"]], "isolation_test_voltage"
     )
-    result = map_converter_id(result, schema_name=schema)
+    result = map_converter_id(result, schema_name=schema, db_engine=db_engine)
 
     return result[["converter_id", "duration_sec", "unit", "voltage"]].copy()
 
 
-def create_pins_data(input_data: pd.DataFrame, schema: str) -> pd.DataFrame:
+def create_pins_data(input_data: pd.DataFrame, schema: str, db_engine: Engine) -> pd.DataFrame:
     result = expand_list_of_dicts(input_data[["part_number", "pins"]], "pins")
-    result = map_converter_id(result, schema_name=schema)
+    result = map_converter_id(result, schema_name=schema, db_engine=db_engine)
 
     result = result.rename(columns={"type": "pin_type"})
     result = result.drop(columns=["part_number"])
@@ -247,11 +250,11 @@ def create_pins_data(input_data: pd.DataFrame, schema: str) -> pd.DataFrame:
     return result[["converter_id", "pin_id", "pin_type"]]
 
 
-def create_derating_data(input_data: pd.DataFrame, schema: str) -> pd.DataFrame:
+def create_derating_data(input_data: pd.DataFrame, schema: str, db_engine: Engine) -> pd.DataFrame:
     result = expand_list_of_dicts(
         input_data[["power_derating", "part_number"]], "power_derating"
     )
-    result = map_converter_id(result, schema_name=schema)
+    result = map_converter_id(result, schema_name=schema, db_engine=db_engine)
     result = result.drop(columns=["part_number"])
 
     result = result.rename(
@@ -269,14 +272,14 @@ def create_derating_data(input_data: pd.DataFrame, schema: str) -> pd.DataFrame:
 
 
 def create_converter_certifications_mapping_table(
-    input_data: pd.DataFrame, schema: str
+    input_data: pd.DataFrame, schema: str, db_engine: Engine
 ) -> pd.DataFrame:
     result = expand_list_of_dicts(
         input_data[["certifications", "part_number"]], "certifications", drop_col=False
     )
     result["certifications"] = result["certifications"].str.lower()
 
-    result = map_converter_id(result, schema_name=schema)
+    result = map_converter_id(result, schema_name=schema, db_engine=db_engine)
 
     result = map_table_id(
         result,
@@ -285,7 +288,7 @@ def create_converter_certifications_mapping_table(
             "column_name": "certifications",
             "database_column_name": "name",
         },
-        schema_name=schema,
+        schema_name=schema, db_engine=db_engine
     )
     result = result.rename(columns={"certifications_id": "certification_id"})
 
@@ -298,14 +301,14 @@ def create_converter_certifications_mapping_table(
 
 
 def create_converter_protections_mapping_table(
-    input_data: pd.DataFrame, schema: str
+    input_data: pd.DataFrame, schema: str, db_engine: Engine
 ) -> pd.DataFrame:
     result = expand_list_of_dicts(
         input_data[["protections", "part_number"]], "protections", drop_col=False
     )
     result["protections"] = result["protections"].str.lower()
 
-    result = map_converter_id(result, schema_name=schema)
+    result = map_converter_id(result, schema_name=schema, db_engine=db_engine)
 
     result = map_table_id(
         result,
@@ -315,6 +318,7 @@ def create_converter_protections_mapping_table(
             "database_column_name": "name",
         },
         schema_name=schema,
+        db_engine=db_engine
     )
     result = result.rename(columns={"protections_id": "protection_id"})
 
@@ -326,12 +330,16 @@ def create_converter_protections_mapping_table(
 
 
 def create_complete_schema(
-    schema_name: str = "recom", company_names: list[str] | None = None
+        schema_name: str,
+        db_engine: Engine,
+        connection: Connection,
+        cursor: Cursor,
+        company_names: list[str] | None = None,
 ):
     if company_names is None:
         company_names = ["recom", "traco"]
 
-    create_tables(schema=schema_name)
+    create_tables(schema=schema_name, conn=connection, cursor=cursor)
 
     for company in company_names:
         print(f"loading for {company}")
@@ -342,6 +350,7 @@ def create_complete_schema(
             table_name="product_series",
             column_identifier="name",
             schema=schema_name,
+            db_engine=engine
         )
 
         upsert_table(
@@ -349,6 +358,7 @@ def create_complete_schema(
             table_name="certifications",
             column_identifier="name",
             schema=schema_name,
+            db_engine=engine
         )
 
         upsert_table(
@@ -356,53 +366,78 @@ def create_complete_schema(
             table_name="protections",
             column_identifier="name",
             schema=schema_name,
+            db_engine=engine
         )
 
         upsert_table(
             data=create_converters_data(
-                input_data=df, company=company, schema=schema_name
+                input_data=df, company=company, schema=schema_name, db_engine=engine
             ),
             table_name="converters",
             column_identifier="part_number",
             schema=schema_name,
+            db_engine=engine
         )
 
         upsert_table(
-            data=create_isolation_tests_data(input_data=df, schema=schema_name),
+            data=create_isolation_tests_data(input_data=df, schema=schema_name, db_engine=db_engine),
             table_name="isolation_tests",
             schema=schema_name,
+            db_engine=engine
         )
 
         upsert_table(
-            data=create_pins_data(input_data=df, schema=schema_name),
+            data=create_pins_data(input_data=df, schema=schema_name, db_engine=db_engine),
             table_name="pins",
             schema=schema_name,
+            db_engine=engine
         )
 
         upsert_table(
-            data=create_derating_data(input_data=df, schema=schema_name),
+            data=create_derating_data(input_data=df, schema=schema_name, db_engine=db_engine),
             table_name="power_derating",
             schema=schema_name,
+            db_engine=engine
         )
 
         upsert_table(
             data=create_converter_certifications_mapping_table(
-                input_data=df, schema=schema_name
+                input_data=df, schema=schema_name, db_engine=engine
             ),
             table_name="converter_certifications",
             schema=schema_name,
+            db_engine=db_engine
         )
 
         upsert_table(
             data=create_converter_protections_mapping_table(
-                input_data=df, schema=schema_name
+                input_data=df, schema=schema_name, db_engine=db_engine
             ),
             table_name="converter_protections",
             schema=schema_name,
+            db_engine=db_engine
         )
 
 
 if __name__ == "__main__":
+
+    engine = get_mssql_engine(
+        server=os.environ["MSSQL_HOST_RECOM"],
+        username=os.environ["MSSQL_USERNAME_RECOM"],
+        password=os.environ["MSSQL_PASSWORD_RECOM"],
+        database="Time2Act"
+    )
+
+    co, cu = connect_mssql(
+        server=os.environ["MSSQL_HOST_RECOM"],
+        username=os.environ["MSSQL_USERNAME_RECOM"],
+        password=os.environ["MSSQL_PASSWORD_RECOM"],
+        database="Time2Act")
+
     create_complete_schema(
-        company_names=["recom", "traco", "meanwell", "xp"], schema_name="crosslist_test"
+        company_names=["recom", "traco", "meanwell", "xp"],
+        schema_name="crosslist",
+        db_engine=engine,
+        connection=co,
+        cursor=cu
     )
