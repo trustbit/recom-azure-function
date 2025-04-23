@@ -56,14 +56,14 @@ if __name__ == "__main__":
         server=os.environ["MSSQL_HOST_RECOM"],
         username=os.environ["MSSQL_USERNAME_RECOM"],
         password=os.environ["MSSQL_PASSWORD_RECOM"],
-        database="Time2Act"
+        database="Time2Act",
     )
 
     test_engine = get_mssql_engine(
         server=os.environ["MSSQL_HOST_RECOM"],
         username=os.environ["MSSQL_USERNAME_RECOM"],
         password=os.environ["MSSQL_PASSWORD_RECOM"],
-        database="Time2Act"
+        database="Time2Act",
     )
     # df = pd.read_sql_table(table_name="converters", con=test_engine)
     #

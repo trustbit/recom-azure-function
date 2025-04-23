@@ -6,12 +6,9 @@ from pyodbc import Cursor, Connection
 from connect_mssql import connect_mssql, get_mssql_engine
 
 
-
-
 def create_cross_data_frame(
-        crosses_path: pathlib.Path = pathlib.Path(__file__).parent / "crosses.csv",
+    crosses_path: pathlib.Path = pathlib.Path(__file__).parent / "crosses.csv",
 ) -> pd.DataFrame:
-
     with open(crosses_path, mode="r") as file:
         df = pd.read_csv(file)
 
@@ -21,13 +18,12 @@ def create_cross_data_frame(
 
 
 def insert_cross(
-        data: pd.DataFrame,
-        schema: str,
-        db_engine: Engine,
-        conn: Connection,
-        cursor: Cursor,
+    data: pd.DataFrame,
+    schema: str,
+    db_engine: Engine,
+    conn: Connection,
+    cursor: Cursor,
 ):
-
     product_series = pd.read_sql_table(
         table_name="product_series", con=db_engine, schema=schema
     )
@@ -40,13 +36,13 @@ def insert_cross(
         & (~data["Recom product"].isna())
         & (~data["Traco product"].isna())
     ].to_dict(orient="records"):
-
         try:
             insert_data = (
                 map_dict[record["Recom product"]],
                 map_dict[record["Traco product"]],
                 int(record["Level"]),
-                "",)
+                "",
+            )
 
         except KeyError:
             continue
@@ -72,18 +68,21 @@ if __name__ == "__main__":
         server=os.environ["MSSQL_HOST_RECOM"],
         username=os.environ["MSSQL_USERNAME_RECOM"],
         password=os.environ["MSSQL_PASSWORD_RECOM"],
-        database="Time2Act"
+        database="Time2Act",
     )
 
     co, cu = connect_mssql(
         server=os.environ["MSSQL_HOST_RECOM"],
         username=os.environ["MSSQL_USERNAME_RECOM"],
         password=os.environ["MSSQL_PASSWORD_RECOM"],
-        database="Time2Act")
+        database="Time2Act",
+    )
 
     test_schema = "crosslist"
 
     empty_table(table_name="crosses", schema_name=test_schema, db_engine=engine)
 
     cross_data = create_cross_data_frame()
-    insert_cross(data=cross_data, schema=test_schema, conn=co, cursor=cu, db_engine=engine)
+    insert_cross(
+        data=cross_data, schema=test_schema, conn=co, cursor=cu, db_engine=engine
+    )

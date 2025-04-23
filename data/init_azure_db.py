@@ -1,5 +1,3 @@
-import os
-import pathlib
 from pyodbc import Connection, Cursor
 from connect_mssql import connect_mssql
 from datetime import datetime
@@ -13,7 +11,6 @@ def create_tables(
     cursor: Cursor = cu,
     schema: str = "dbo",
 ):
-
     cursor.execute(
         """
     select schema_id from sys.schemas where name = ?

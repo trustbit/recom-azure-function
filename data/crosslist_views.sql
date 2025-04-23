@@ -1,4 +1,4 @@
-create view crosslist_test.cross_series as
+create view crosslist.cross_series as
 
 select c.id,
        product_series_id as cross_left_id,

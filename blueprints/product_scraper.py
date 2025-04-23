@@ -14,135 +14,135 @@ bp = func.Blueprint()
 @bp.activity_trigger(input_name="input")
 def scrape_products(input: dict) -> dict:
     """Activity function to scrape detailed product data"""
-    logging.info(
-        f"Scraping products for {input['manufacturer']} {input['product_type']}"
-    )
-
-    try:
-        # Get parameters
-        manufacturer = input.get("manufacturer", "recom")
-        product_type = input.get("product_type", "dc-dc-converters")
-
-        # Initialize environment
-        env = AzureEnvironment()
-
-        # Choose scraper based on manufacturer
-        if manufacturer == "recom":
-            products_data = asyncio.run(scrape_recom_products(env, product_type))
-        elif manufacturer == "traco":
-            products_data = asyncio.run(scrape_traco_products(env, product_type))
-        elif manufacturer == "xppower":
-            products_data = asyncio.run(scrape_xppower_products(env, product_type))
-        else:
-            raise ValueError(f"Unsupported manufacturer: {manufacturer}")
-
-        # Convert to DataFrame and save
-        df = pd.DataFrame(products_data)
-
-        step_name = f"{manufacturer}2_scrape_products"
-        file_name = f"{product_type}.csv"
-        env.storage.save_df(step_name, file_name, df)
-
-        return {
-            "success": True,
-            "manufacturer": manufacturer,
-            "product_type": product_type,
-            "count": len(products_data),
-            "step_name": step_name,
-            "file_name": file_name,
-        }
-    except Exception as e:
-        logging.error(f"Error in scrape_products: {str(e)}")
-        return {
-            "success": False,
-            "error": str(e),
-            "manufacturer": input.get("manufacturer", "recom"),
-            "product_type": input.get("product_type", "dc-dc-converters"),
-        }
+    # logging.info(
+    #     f"Scraping products for {input['manufacturer']} {input['product_type']}"
+    # )
+    #
+    # try:
+    #     # Get parameters
+    #     manufacturer = input.get("manufacturer", "recom")
+    #     product_type = input.get("product_type", "dc-dc-converters")
+    #
+    #     # Initialize environment
+    #     env = AzureEnvironment()
+    #
+    #     # Choose scraper based on manufacturer
+    #     if manufacturer == "recom":
+    #         products_data = asyncio.run(scrape_recom_products(env, product_type))
+    #     elif manufacturer == "traco":
+    #         products_data = asyncio.run(scrape_traco_products(env, product_type))
+    #     elif manufacturer == "xppower":
+    #         products_data = asyncio.run(scrape_xppower_products(env, product_type))
+    #     else:
+    #         raise ValueError(f"Unsupported manufacturer: {manufacturer}")
+    #
+    #     # Convert to DataFrame and save
+    #     df = pd.DataFrame(products_data)
+    #
+    #     step_name = f"{manufacturer}2_scrape_products"
+    #     file_name = f"{product_type}.csv"
+    #     env.storage.save_df(step_name, file_name, df)
+    #
+    #     return {
+    #         "success": True,
+    #         "manufacturer": manufacturer,
+    #         "product_type": product_type,
+    #         "count": len(products_data),
+    #         "step_name": step_name,
+    #         "file_name": file_name,
+    #     }
+    # except Exception as e:
+    #     logging.error(f"Error in scrape_products: {str(e)}")
+    #     return {
+    #         "success": False,
+    #         "error": str(e),
+    #         "manufacturer": input.get("manufacturer", "recom"),
+    #         "product_type": input.get("product_type", "dc-dc-converters"),
+    #     }
 
 
 async def scrape_recom_products(env, product_type):
     """Scrape RECOM products from series data"""
     # Load series data
-    step_name = "recom1_scrape_series"
-    file_name = f"{product_type}.csv"
-    series_df = env.storage.load_df(step_name, file_name)
-
-    all_products = []
-    async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True)
-
-        for _, series in series_df.iterrows():
-            page = await browser.new_page()
-            try:
-                # Navigate to series page
-                url = series["product_link"]
-                await page.goto(url, wait_until="networkidle")
-
-                # Wait for products table
-                await page.wait_for_selector("table.productTable", timeout=10000)
-
-                # Get all product rows
-                rows = await page.query_selector_all("table.productTable tbody tr")
-
-                series_products = []
-                for row in rows:
-                    try:
-                        # Extract product data
-                        cells = await row.query_selector_all("td")
-
-                        if len(cells) < 5:  # Skip header or invalid rows
-                            continue
-
-                        product_code = await cells[0].inner_text()
-                        description = await cells[1].inner_text()
-                        input_voltage = await cells[2].inner_text()
-                        output_voltage = await cells[3].inner_text()
-                        current = await cells[4].inner_text()
-
-                        # Get datasheet link
-                        datasheet_cell = await row.query_selector(
-                            "td.additional-column"
-                        )
-                        datasheet_link = ""
-                        if datasheet_cell:
-                            link_elem = await datasheet_cell.query_selector("a.btn")
-                            if link_elem:
-                                datasheet_link = await link_elem.get_attribute("href")
-
-                        product = {
-                            "series_name": series["product_name"],
-                            "product_code": product_code,
-                            "description": description,
-                            "input_voltage": input_voltage,
-                            "output_voltage": output_voltage,
-                            "current": current,
-                            "datasheet_link": datasheet_link,
-                            "series_power": series["power"],
-                            "series_mounting_type": series["mounting_type"],
-                            "series_package_style": series["package_style"],
-                        }
-
-                        series_products.append(product)
-                    except Exception as e:
-                        logging.warning(f"Error processing product row: {str(e)}")
-                        continue
-
-                all_products.extend(series_products)
-                logging.info(
-                    f"Scraped {len(series_products)} products from {series['product_name']}"
-                )
-
-            except Exception as e:
-                logging.error(
-                    f"Error scraping series {series.get('product_name', 'unknown')}: {str(e)}"
-                )
-            finally:
-                await page.close()
-
-        await browser.close()
-
-    return all_products
+    # step_name = "recom1_scrape_series"
+    # file_name = f"{product_type}.csv"
+    # series_df = env.storage.load_df(step_name, file_name)
+    #
+    # all_products = []
+    # async with async_playwright() as p:
+    #     browser = await p.chromium.launch(headless=True)
+    #
+    #     for _, series in series_df.iterrows():
+    #         page = await browser.new_page()
+    #         try:
+    #             # Navigate to series page
+    #             url = series["product_link"]
+    #             await page.goto(url, wait_until="networkidle")
+    #
+    #             # Wait for products table
+    #             await page.wait_for_selector("table.productTable", timeout=10000)
+    #
+    #             # Get all product rows
+    #             rows = await page.query_selector_all("table.productTable tbody tr")
+    #
+    #             series_products = []
+    #             for row in rows:
+    #                 try:
+    #                     # Extract product data
+    #                     cells = await row.query_selector_all("td")
+    #
+    #                     if len(cells) < 5:  # Skip header or invalid rows
+    #                         continue
+    #
+    #                     product_code = await cells[0].inner_text()
+    #                     description = await cells[1].inner_text()
+    #                     input_voltage = await cells[2].inner_text()
+    #                     output_voltage = await cells[3].inner_text()
+    #                     current = await cells[4].inner_text()
+    #
+    #                     # Get datasheet link
+    #                     datasheet_cell = await row.query_selector(
+    #                         "td.additional-column"
+    #                     )
+    #                     datasheet_link = ""
+    #                     if datasheet_cell:
+    #                         link_elem = await datasheet_cell.query_selector("a.btn")
+    #                         if link_elem:
+    #                             datasheet_link = await link_elem.get_attribute("href")
+    #
+    #                     product = {
+    #                         "series_name": series["product_name"],
+    #                         "product_code": product_code,
+    #                         "description": description,
+    #                         "input_voltage": input_voltage,
+    #                         "output_voltage": output_voltage,
+    #                         "current": current,
+    #                         "datasheet_link": datasheet_link,
+    #                         "series_power": series["power"],
+    #                         "series_mounting_type": series["mounting_type"],
+    #                         "series_package_style": series["package_style"],
+    #                     }
+    #
+    #                     series_products.append(product)
+    #                 except Exception as e:
+    #                     logging.warning(f"Error processing product row: {str(e)}")
+    #                     continue
+    #
+    #             all_products.extend(series_products)
+    #             logging.info(
+    #                 f"Scraped {len(series_products)} products from {series['product_name']}"
+    #             )
+    #
+    #         except Exception as e:
+    #             logging.error(
+    #                 f"Error scraping series {series.get('product_name', 'unknown')}: {str(e)}"
+    #             )
+    #         finally:
+    #             await page.close()
+    #
+    #     await browser.close()
+    #
+    # return all_products
 
 
 async def scrape_traco_products(env, product_type):

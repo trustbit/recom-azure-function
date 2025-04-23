@@ -10,8 +10,6 @@ from connect_mssql import get_mssql_engine
 from load_mssql import empty_table, load_table, load_json_data
 
 
-
-
 def expand_list_of_dicts(
     input_data: pd.DataFrame, column_name: str, drop_col: bool = True
 ):
@@ -83,7 +81,7 @@ def map_table_id(
 def upsert_table(
     data: pd.DataFrame,
     table_name: str,
-        db_engine: Engine,
+    db_engine: Engine,
     column_identifier: str | None = None,
     schema: str = "recom",
 ):
@@ -230,7 +228,9 @@ def create_converters_data(
     return result[res_columns].copy().drop_duplicates(subset="part_number")
 
 
-def create_isolation_tests_data(input_data: pd.DataFrame, schema: str, db_engine: Engine) -> pd.DataFrame:
+def create_isolation_tests_data(
+    input_data: pd.DataFrame, schema: str, db_engine: Engine
+) -> pd.DataFrame:
     result = expand_list_of_dicts(
         input_data[["isolation_test_voltage", "part_number"]], "isolation_test_voltage"
     )
@@ -239,7 +239,9 @@ def create_isolation_tests_data(input_data: pd.DataFrame, schema: str, db_engine
     return result[["converter_id", "duration_sec", "unit", "voltage"]].copy()
 
 
-def create_pins_data(input_data: pd.DataFrame, schema: str, db_engine: Engine) -> pd.DataFrame:
+def create_pins_data(
+    input_data: pd.DataFrame, schema: str, db_engine: Engine
+) -> pd.DataFrame:
     result = expand_list_of_dicts(input_data[["part_number", "pins"]], "pins")
     result = map_converter_id(result, schema_name=schema, db_engine=db_engine)
 
@@ -250,7 +252,9 @@ def create_pins_data(input_data: pd.DataFrame, schema: str, db_engine: Engine) -
     return result[["converter_id", "pin_id", "pin_type"]]
 
 
-def create_derating_data(input_data: pd.DataFrame, schema: str, db_engine: Engine) -> pd.DataFrame:
+def create_derating_data(
+    input_data: pd.DataFrame, schema: str, db_engine: Engine
+) -> pd.DataFrame:
     result = expand_list_of_dicts(
         input_data[["power_derating", "part_number"]], "power_derating"
     )
@@ -288,7 +292,8 @@ def create_converter_certifications_mapping_table(
             "column_name": "certifications",
             "database_column_name": "name",
         },
-        schema_name=schema, db_engine=db_engine
+        schema_name=schema,
+        db_engine=db_engine,
     )
     result = result.rename(columns={"certifications_id": "certification_id"})
 
@@ -318,7 +323,7 @@ def create_converter_protections_mapping_table(
             "database_column_name": "name",
         },
         schema_name=schema,
-        db_engine=db_engine
+        db_engine=db_engine,
     )
     result = result.rename(columns={"protections_id": "protection_id"})
 
@@ -330,11 +335,11 @@ def create_converter_protections_mapping_table(
 
 
 def create_complete_schema(
-        schema_name: str,
-        db_engine: Engine,
-        connection: Connection,
-        cursor: Cursor,
-        company_names: list[str] | None = None,
+    schema_name: str,
+    db_engine: Engine,
+    connection: Connection,
+    cursor: Cursor,
+    company_names: list[str] | None = None,
 ):
     if company_names is None:
         company_names = ["recom", "traco"]
@@ -350,7 +355,7 @@ def create_complete_schema(
             table_name="product_series",
             column_identifier="name",
             schema=schema_name,
-            db_engine=engine
+            db_engine=engine,
         )
 
         upsert_table(
@@ -358,7 +363,7 @@ def create_complete_schema(
             table_name="certifications",
             column_identifier="name",
             schema=schema_name,
-            db_engine=engine
+            db_engine=engine,
         )
 
         upsert_table(
@@ -366,7 +371,7 @@ def create_complete_schema(
             table_name="protections",
             column_identifier="name",
             schema=schema_name,
-            db_engine=engine
+            db_engine=engine,
         )
 
         upsert_table(
@@ -376,28 +381,34 @@ def create_complete_schema(
             table_name="converters",
             column_identifier="part_number",
             schema=schema_name,
-            db_engine=engine
+            db_engine=engine,
         )
 
         upsert_table(
-            data=create_isolation_tests_data(input_data=df, schema=schema_name, db_engine=db_engine),
+            data=create_isolation_tests_data(
+                input_data=df, schema=schema_name, db_engine=db_engine
+            ),
             table_name="isolation_tests",
             schema=schema_name,
-            db_engine=engine
+            db_engine=engine,
         )
 
         upsert_table(
-            data=create_pins_data(input_data=df, schema=schema_name, db_engine=db_engine),
+            data=create_pins_data(
+                input_data=df, schema=schema_name, db_engine=db_engine
+            ),
             table_name="pins",
             schema=schema_name,
-            db_engine=engine
+            db_engine=engine,
         )
 
         upsert_table(
-            data=create_derating_data(input_data=df, schema=schema_name, db_engine=db_engine),
+            data=create_derating_data(
+                input_data=df, schema=schema_name, db_engine=db_engine
+            ),
             table_name="power_derating",
             schema=schema_name,
-            db_engine=engine
+            db_engine=engine,
         )
 
         upsert_table(
@@ -406,7 +417,7 @@ def create_complete_schema(
             ),
             table_name="converter_certifications",
             schema=schema_name,
-            db_engine=db_engine
+            db_engine=db_engine,
         )
 
         upsert_table(
@@ -415,29 +426,29 @@ def create_complete_schema(
             ),
             table_name="converter_protections",
             schema=schema_name,
-            db_engine=db_engine
+            db_engine=db_engine,
         )
 
 
 if __name__ == "__main__":
-
     engine = get_mssql_engine(
         server=os.environ["MSSQL_HOST_RECOM"],
         username=os.environ["MSSQL_USERNAME_RECOM"],
         password=os.environ["MSSQL_PASSWORD_RECOM"],
-        database="Time2Act"
+        database="Time2Act",
     )
 
     co, cu = connect_mssql(
         server=os.environ["MSSQL_HOST_RECOM"],
         username=os.environ["MSSQL_USERNAME_RECOM"],
         password=os.environ["MSSQL_PASSWORD_RECOM"],
-        database="Time2Act")
+        database="Time2Act",
+    )
 
     create_complete_schema(
         company_names=["recom", "traco", "meanwell", "xp"],
         schema_name="crosslist",
         db_engine=engine,
         connection=co,
-        cursor=cu
+        cursor=cu,
     )
