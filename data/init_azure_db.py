@@ -1,14 +1,14 @@
 from pyodbc import Connection, Cursor
-from connect_mssql import connect_mssql
+from data.connect_mssql import connect_mssql
 from datetime import datetime
 
 
-co, cu = connect_mssql()
+# co, cu = connect_mssql()
 
 
 def create_tables(
-    conn: Connection = co,
-    cursor: Cursor = cu,
+    conn: Connection,
+    cursor: Cursor,
     schema: str = "dbo",
 ):
     cursor.execute(
@@ -258,307 +258,307 @@ END"""
 #
 
 
-def get_or_create_certification(cursor, cert_name):
-    cursor.execute("SELECT id FROM certifications WHERE name = ?", (cert_name,))
-    result = cursor.fetchone()
-    if result:
-        return result[0]
-    else:
-        # Insert and get the ID in a single operation
-        cursor.execute(
-            """
-        INSERT INTO certifications (name) 
-        OUTPUT INSERTED.id
-        VALUES (?)
-        """,
-            (cert_name,),
-        )
+# def get_or_create_certification(cursor, cert_name):
+#     cursor.execute("SELECT id FROM certifications WHERE name = ?", (cert_name,))
+#     result = cursor.fetchone()
+#     if result:
+#         return result[0]
+#     else:
+#         # Insert and get the ID in a single operation
+#         cursor.execute(
+#             """
+#         INSERT INTO certifications (name)
+#         OUTPUT INSERTED.id
+#         VALUES (?)
+#         """,
+#             (cert_name,),
+#         )
+#
+#         result = cursor.fetchone()
+#         if result:
+#             return result[0]
+#         else:
+#             raise ValueError(f"Failed to insert certification: {cert_name}")
+#
 
-        result = cursor.fetchone()
-        if result:
-            return result[0]
-        else:
-            raise ValueError(f"Failed to insert certification: {cert_name}")
-
-
-def get_or_create_protection(cursor, protection_name):
-    cursor.execute("SELECT id FROM protections WHERE name = ?", (protection_name,))
-    result = cursor.fetchone()
-    if result:
-        return result[0]
-    else:
-        # Insert and get the ID in a single operation
-        cursor.execute(
-            """
-        INSERT INTO protections (name) 
-        OUTPUT INSERTED.id
-        VALUES (?)
-        """,
-            (protection_name,),
-        )
-
-        result = cursor.fetchone()
-        if result:
-            return result[0]
-        else:
-            raise ValueError(f"Failed to insert protection: {protection_name}")
-
-
-def insert_converter(company, data):
-    conn, cursor = connect_mssql()
-
-    current_time = datetime.now()
-
-    package = data["package"] or {}
-    dimensions = data["dimensions"] or {}
-    operating_temp = data["operating_temperature"] or {}
-
-    # First check if the converter already exists
-    cursor.execute(
-        "SELECT id FROM converters WHERE part_number = ?", (data["part_number"],)
-    )
-    existing_id = cursor.fetchone()
-
-    if existing_id:
-        # Update existing converter
-        converter_id = existing_id[0]
-        update_data = (
-            company,
-            data["product_series"],
-            data["converter_type"],
-            data["ac_voltage_input_min"],
-            data["ac_voltage_input_max"],
-            data["dc_voltage_input_min"],
-            data["dc_voltage_input_max"],
-            data["input_voltage_tolerance"],
-            data["power"],
-            data["is_regulated"],
-            data["regulation_voltage_range"],
-            data["efficiency"],
-            data["voltage_output_1"],
-            data["voltage_output_2"],
-            data["voltage_output_3"],
-            data["i_out1"],
-            data["i_out2"],
-            data["i_out3"],
-            data["output_type"],
-            len(data["pins"]) if data["pins"] else 0,
-            package.get("mounting_type"),
-            package.get("connection_type"),
-            dimensions.get("unit"),
-            dimensions.get("length"),
-            dimensions.get("width"),
-            dimensions.get("height"),
-            operating_temp.get("min"),
-            operating_temp.get("max"),
-            current_time,
-            data["part_number"],
-        )
-
-        cursor.execute(
-            """
-        UPDATE converters SET
-            company = ?,
-            product_series = ?,
-            converter_type = ?,
-            ac_voltage_input_min = ?,
-            ac_voltage_input_max = ?,
-            dc_voltage_input_min = ?,
-            dc_voltage_input_max = ?,
-            input_voltage_tolerance = ?,
-            power = ?,
-            is_regulated = ?,
-            regulation_voltage_range = ?,
-            efficiency = ?,
-            voltage_output_1 = ?,
-            voltage_output_2 = ?,
-            voltage_output_3 = ?,
-            i_out1 = ?,
-            i_out2 = ?,
-            i_out3 = ?,
-            output_type = ?,
-            pin_count = ?,
-            mounting_type = ?,
-            connection_type = ?,
-            dimensions_unit = ?,
-            dimensions_length = ?,
-            dimensions_width = ?,
-            dimensions_height = ?,
-            operating_temp_min = ?,
-            operating_temp_max = ?,
-            updated_at = ?
-        WHERE part_number = ?
-        """,
-            update_data,
-        )
-
-        # Delete existing related data
-        # Delete existing related data
-        cursor.execute(
-            "DELETE FROM isolation_tests WHERE converter_id = ?", (converter_id,)
-        )
-        cursor.execute(
-            "DELETE FROM converter_certifications WHERE converter_id = ?",
-            (converter_id,),
-        )
-        cursor.execute(
-            "DELETE FROM converter_protections WHERE converter_id = ?", (converter_id,)
-        )
-        cursor.execute("DELETE FROM pins WHERE converter_id = ?", (converter_id,))
-        cursor.execute(
-            "DELETE FROM power_derating WHERE converter_id = ?", (converter_id,)
-        )
-
-    else:
-        # Insert new converter
-        insert_data = (
-            company,
-            data["product_series"],
-            data["part_number"],
-            data["converter_type"],
-            data["ac_voltage_input_min"],
-            data["ac_voltage_input_max"],
-            data["dc_voltage_input_min"],
-            data["dc_voltage_input_max"],
-            data["input_voltage_tolerance"],
-            data["power"],
-            data["is_regulated"],
-            data["regulation_voltage_range"],
-            data["efficiency"],
-            data["voltage_output_1"],
-            data["voltage_output_2"],
-            data["voltage_output_3"],
-            data["i_out1"],
-            data["i_out2"],
-            data["i_out3"],
-            data["output_type"],
-            len(data["pins"]) if data["pins"] else 0,
-            package.get("mounting_type"),
-            package.get("connection_type"),
-            dimensions.get("unit"),
-            dimensions.get("length"),
-            dimensions.get("width"),
-            dimensions.get("height"),
-            operating_temp.get("min"),
-            operating_temp.get("max"),
-            current_time,
-            current_time,
-        )
-
-        cursor.execute(
-            """
-        INSERT INTO converters (
-            company, product_series, part_number, converter_type,
-            ac_voltage_input_min, ac_voltage_input_max,
-            dc_voltage_input_min, dc_voltage_input_max,
-            input_voltage_tolerance, power, is_regulated,
-            regulation_voltage_range, efficiency,
-            voltage_output_1, voltage_output_2, voltage_output_3,
-            i_out1, i_out2, i_out3, output_type,
-            pin_count, mounting_type, connection_type,
-            dimensions_unit, dimensions_length, dimensions_width, dimensions_height,
-            operating_temp_min, operating_temp_max,
-            created_at, updated_at
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
-        """,
-            insert_data,
-        )
-
-        cursor.execute("SELECT SCOPE_IDENTITY();")
-        converter_id = cursor.fetchval()
-
-    # Insert isolation test data
-    if data["isolation_test_voltage"]:
-        for test in data["isolation_test_voltage"]:
-            cursor.execute(
-                """
-            INSERT INTO isolation_tests (converter_id, duration_sec, unit, voltage)
-            VALUES (?, ?, ?, ?)
-            """,
-                (
-                    converter_id,
-                    test.get("duration_sec"),
-                    test.get("unit"),
-                    test.get("voltage"),
-                ),
-            )
-            conn.commit()
-
-    # Insert certifications
-    if data["certifications"]:
-        for cert in data["certifications"]:
-            cert = cert.strip()
-            if cert and (converter_id is not None):
-                print(cert)
-                cert_id = get_or_create_certification(cursor, cert)
-                print(cert_id)
-                print(converter_id)
-                print(data)
-
-                cursor.execute(
-                    """
-                IF NOT EXISTS (SELECT 1 FROM converter_certifications 
-                               WHERE converter_id = ? AND certification_id = ?)
-                BEGIN
-                    INSERT INTO converter_certifications (converter_id, certification_id)
-                    VALUES (?, ?);
-                END
-                """,
-                    (converter_id, cert_id, converter_id, cert_id),
-                )
-                conn.commit()
-
-    # Insert protections
-    if data["protections"]:
-        for protection in data["protections"]:
-            protection = protection.strip()
-            if protection and (converter_id is not None):
-                protection_id = get_or_create_protection(cursor, protection)
-
-                cursor.execute(
-                    """
-                IF NOT EXISTS (SELECT 1 FROM converter_protections 
-                               WHERE converter_id = ? AND protection_id = ?)
-                BEGIN
-                    INSERT INTO converter_protections (converter_id, protection_id)
-                    VALUES (?, ?);
-                END
-                """,
-                    (converter_id, protection_id, converter_id, protection_id),
-                )
-                conn.commit()
-
-    # Insert pin data
-    if data["pins"]:
-        for pin in data["pins"]:
-            cursor.execute(
-                """
-            INSERT INTO pins (converter_id, pin_id, pin_type)
-            VALUES (?, ?, ?)
-            """,
-                (converter_id, str(pin.get("pin_id")), pin.get("type")),
-            )
-
-    # Insert power derating data
-    if data["power_derating"]:
-        for derating in data["power_derating"]:
-            threshold = derating.get("threshold", {})
-            cursor.execute(
-                """
-            INSERT INTO power_derating (converter_id, threshold_temperature, threshold_unit, unit, rate)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-                (
-                    converter_id,
-                    threshold.get("temperature") if threshold else None,
-                    threshold.get("unit") if threshold else None,
-                    derating.get("unit"),
-                    derating.get("rate"),
-                ),
-            )
-
-    conn.commit()
-    conn.close()
+# def get_or_create_protection(cursor, protection_name):
+#     cursor.execute("SELECT id FROM protections WHERE name = ?", (protection_name,))
+#     result = cursor.fetchone()
+#     if result:
+#         return result[0]
+#     else:
+#         # Insert and get the ID in a single operation
+#         cursor.execute(
+#             """
+#         INSERT INTO protections (name)
+#         OUTPUT INSERTED.id
+#         VALUES (?)
+#         """,
+#             (protection_name,),
+#         )
+#
+#         result = cursor.fetchone()
+#         if result:
+#             return result[0]
+#         else:
+#             raise ValueError(f"Failed to insert protection: {protection_name}")
+#
+#
+# def insert_converter(company, data):
+#     conn, cursor = connect_mssql()
+#
+#     current_time = datetime.now()
+#
+#     package = data["package"] or {}
+#     dimensions = data["dimensions"] or {}
+#     operating_temp = data["operating_temperature"] or {}
+#
+#     # First check if the converter already exists
+#     cursor.execute(
+#         "SELECT id FROM converters WHERE part_number = ?", (data["part_number"],)
+#     )
+#     existing_id = cursor.fetchone()
+#
+#     if existing_id:
+#         # Update existing converter
+#         converter_id = existing_id[0]
+#         update_data = (
+#             company,
+#             data["product_series"],
+#             data["converter_type"],
+#             data["ac_voltage_input_min"],
+#             data["ac_voltage_input_max"],
+#             data["dc_voltage_input_min"],
+#             data["dc_voltage_input_max"],
+#             data["input_voltage_tolerance"],
+#             data["power"],
+#             data["is_regulated"],
+#             data["regulation_voltage_range"],
+#             data["efficiency"],
+#             data["voltage_output_1"],
+#             data["voltage_output_2"],
+#             data["voltage_output_3"],
+#             data["i_out1"],
+#             data["i_out2"],
+#             data["i_out3"],
+#             data["output_type"],
+#             len(data["pins"]) if data["pins"] else 0,
+#             package.get("mounting_type"),
+#             package.get("connection_type"),
+#             dimensions.get("unit"),
+#             dimensions.get("length"),
+#             dimensions.get("width"),
+#             dimensions.get("height"),
+#             operating_temp.get("min"),
+#             operating_temp.get("max"),
+#             current_time,
+#             data["part_number"],
+#         )
+#
+#         cursor.execute(
+#             """
+#         UPDATE converters SET
+#             company = ?,
+#             product_series = ?,
+#             converter_type = ?,
+#             ac_voltage_input_min = ?,
+#             ac_voltage_input_max = ?,
+#             dc_voltage_input_min = ?,
+#             dc_voltage_input_max = ?,
+#             input_voltage_tolerance = ?,
+#             power = ?,
+#             is_regulated = ?,
+#             regulation_voltage_range = ?,
+#             efficiency = ?,
+#             voltage_output_1 = ?,
+#             voltage_output_2 = ?,
+#             voltage_output_3 = ?,
+#             i_out1 = ?,
+#             i_out2 = ?,
+#             i_out3 = ?,
+#             output_type = ?,
+#             pin_count = ?,
+#             mounting_type = ?,
+#             connection_type = ?,
+#             dimensions_unit = ?,
+#             dimensions_length = ?,
+#             dimensions_width = ?,
+#             dimensions_height = ?,
+#             operating_temp_min = ?,
+#             operating_temp_max = ?,
+#             updated_at = ?
+#         WHERE part_number = ?
+#         """,
+#             update_data,
+#         )
+#
+#         # Delete existing related data
+#         # Delete existing related data
+#         cursor.execute(
+#             "DELETE FROM isolation_tests WHERE converter_id = ?", (converter_id,)
+#         )
+#         cursor.execute(
+#             "DELETE FROM converter_certifications WHERE converter_id = ?",
+#             (converter_id,),
+#         )
+#         cursor.execute(
+#             "DELETE FROM converter_protections WHERE converter_id = ?", (converter_id,)
+#         )
+#         cursor.execute("DELETE FROM pins WHERE converter_id = ?", (converter_id,))
+#         cursor.execute(
+#             "DELETE FROM power_derating WHERE converter_id = ?", (converter_id,)
+#         )
+#
+#     else:
+#         # Insert new converter
+#         insert_data = (
+#             company,
+#             data["product_series"],
+#             data["part_number"],
+#             data["converter_type"],
+#             data["ac_voltage_input_min"],
+#             data["ac_voltage_input_max"],
+#             data["dc_voltage_input_min"],
+#             data["dc_voltage_input_max"],
+#             data["input_voltage_tolerance"],
+#             data["power"],
+#             data["is_regulated"],
+#             data["regulation_voltage_range"],
+#             data["efficiency"],
+#             data["voltage_output_1"],
+#             data["voltage_output_2"],
+#             data["voltage_output_3"],
+#             data["i_out1"],
+#             data["i_out2"],
+#             data["i_out3"],
+#             data["output_type"],
+#             len(data["pins"]) if data["pins"] else 0,
+#             package.get("mounting_type"),
+#             package.get("connection_type"),
+#             dimensions.get("unit"),
+#             dimensions.get("length"),
+#             dimensions.get("width"),
+#             dimensions.get("height"),
+#             operating_temp.get("min"),
+#             operating_temp.get("max"),
+#             current_time,
+#             current_time,
+#         )
+#
+#         cursor.execute(
+#             """
+#         INSERT INTO converters (
+#             company, product_series, part_number, converter_type,
+#             ac_voltage_input_min, ac_voltage_input_max,
+#             dc_voltage_input_min, dc_voltage_input_max,
+#             input_voltage_tolerance, power, is_regulated,
+#             regulation_voltage_range, efficiency,
+#             voltage_output_1, voltage_output_2, voltage_output_3,
+#             i_out1, i_out2, i_out3, output_type,
+#             pin_count, mounting_type, connection_type,
+#             dimensions_unit, dimensions_length, dimensions_width, dimensions_height,
+#             operating_temp_min, operating_temp_max,
+#             created_at, updated_at
+#         ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);
+#         """,
+#             insert_data,
+#         )
+#
+#         cursor.execute("SELECT SCOPE_IDENTITY();")
+#         converter_id = cursor.fetchval()
+#
+#     # Insert isolation test data
+#     if data["isolation_test_voltage"]:
+#         for test in data["isolation_test_voltage"]:
+#             cursor.execute(
+#                 """
+#             INSERT INTO isolation_tests (converter_id, duration_sec, unit, voltage)
+#             VALUES (?, ?, ?, ?)
+#             """,
+#                 (
+#                     converter_id,
+#                     test.get("duration_sec"),
+#                     test.get("unit"),
+#                     test.get("voltage"),
+#                 ),
+#             )
+#             conn.commit()
+#
+#     # Insert certifications
+#     if data["certifications"]:
+#         for cert in data["certifications"]:
+#             cert = cert.strip()
+#             if cert and (converter_id is not None):
+#                 print(cert)
+#                 cert_id = get_or_create_certification(cursor, cert)
+#                 print(cert_id)
+#                 print(converter_id)
+#                 print(data)
+#
+#                 cursor.execute(
+#                     """
+#                 IF NOT EXISTS (SELECT 1 FROM converter_certifications
+#                                WHERE converter_id = ? AND certification_id = ?)
+#                 BEGIN
+#                     INSERT INTO converter_certifications (converter_id, certification_id)
+#                     VALUES (?, ?);
+#                 END
+#                 """,
+#                     (converter_id, cert_id, converter_id, cert_id),
+#                 )
+#                 conn.commit()
+#
+#     # Insert protections
+#     if data["protections"]:
+#         for protection in data["protections"]:
+#             protection = protection.strip()
+#             if protection and (converter_id is not None):
+#                 protection_id = get_or_create_protection(cursor, protection)
+#
+#                 cursor.execute(
+#                     """
+#                 IF NOT EXISTS (SELECT 1 FROM converter_protections
+#                                WHERE converter_id = ? AND protection_id = ?)
+#                 BEGIN
+#                     INSERT INTO converter_protections (converter_id, protection_id)
+#                     VALUES (?, ?);
+#                 END
+#                 """,
+#                     (converter_id, protection_id, converter_id, protection_id),
+#                 )
+#                 conn.commit()
+#
+#     # Insert pin data
+#     if data["pins"]:
+#         for pin in data["pins"]:
+#             cursor.execute(
+#                 """
+#             INSERT INTO pins (converter_id, pin_id, pin_type)
+#             VALUES (?, ?, ?)
+#             """,
+#                 (converter_id, str(pin.get("pin_id")), pin.get("type")),
+#             )
+#
+#     # Insert power derating data
+#     if data["power_derating"]:
+#         for derating in data["power_derating"]:
+#             threshold = derating.get("threshold", {})
+#             cursor.execute(
+#                 """
+#             INSERT INTO power_derating (converter_id, threshold_temperature, threshold_unit, unit, rate)
+#             VALUES (?, ?, ?, ?, ?)
+#             """,
+#                 (
+#                     converter_id,
+#                     threshold.get("temperature") if threshold else None,
+#                     threshold.get("unit") if threshold else None,
+#                     derating.get("unit"),
+#                     derating.get("rate"),
+#                 ),
+#             )
+#
+#     conn.commit()
+#     conn.close()
 
 
 if __name__ == "__main__":
@@ -566,13 +566,13 @@ if __name__ == "__main__":
 
     create_tables()
 
-    def process_products(company: str, products: list):
-        # create_view(company)
-        """Helper function to process and insert products for a given company"""
-        for product in products:
-            insert_converter(company, product)
-
-    process_products("recom", load_products("recom"))
-    process_products("traco", load_products("traco"))
-    process_products("xp", load_products("xp"))
-    process_products("meanwell", load_products("meanwell"))
+    # def process_products(company: str, products: list):
+    #     create_view(company)
+        # """Helper function to process and insert products for a given company"""
+        # for product in products:
+        #     insert_converter(company, product)
+    #
+    # process_products("recom", load_products("recom"))
+    # process_products("traco", load_products("traco"))
+    # process_products("xp", load_products("xp"))
+    # process_products("meanwell", load_products("meanwell"))

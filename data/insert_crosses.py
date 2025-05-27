@@ -62,7 +62,7 @@ def insert_cross(
 
 
 if __name__ == "__main__":
-    from load_mssql import empty_table
+    from init_azure_db import empty_table
 
     engine = get_mssql_engine(
         server=os.environ["MSSQL_HOST_RECOM"],

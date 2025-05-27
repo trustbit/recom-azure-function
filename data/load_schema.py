@@ -1,13 +1,15 @@
 import os
+import pathlib
 from pyodbc import Connection, Cursor
 from datetime import datetime
 
 from data.connect_mssql import connect_mssql
-from init_azure_db import create_tables
+from data.init_azure_db import create_tables
+from sqlalchemy import text
 from sqlalchemy.engine.base import Engine
 import pandas as pd
-from connect_mssql import get_mssql_engine
-from load_mssql import empty_table, load_table, load_json_data
+from data.connect_mssql import get_mssql_engine
+from data.products_data import load_products
 
 
 def expand_list_of_dicts(
@@ -76,6 +78,45 @@ def map_table_id(
     result = result.copy()
 
     return result.rename(columns={"id": f"{mapping_config['table_name']}_id"}).copy()
+
+
+def load_json_data(
+        company: str,
+        data_path: pathlib.Path = pathlib.Path(__file__).parent):
+
+    directory = data_path / company
+
+    assert directory.is_dir(), f"{directory} not found"
+
+    data = load_products(str(directory.absolute()))
+    df = pd.DataFrame(data=data)
+    df["company"] = company
+
+    return df
+
+
+def empty_table(table_name: str, schema_name: str, db_engine: Engine):
+    with db_engine.connect() as connection:
+        connection.execute(text(f"DELETE FROM [{schema_name}].[{table_name}]"))
+        connection.commit()
+
+
+def load_table(
+        data: pd.DataFrame,
+        db_engine: Engine,
+        table_name: str,
+        schema_name: str = "dbo",
+):
+    if "id" in data.columns:
+        data = data.drop(columns=["id"])
+
+    data.to_sql(
+        name=table_name,
+        con=db_engine,
+        schema=schema_name,
+        if_exists="append",
+        index=False,
+    )
 
 
 def upsert_table(
@@ -334,6 +375,30 @@ def create_converter_protections_mapping_table(
     return result.copy()
 
 
+def create_relevant_certifications_table(
+        input_data: list[str],
+        schema: str,
+        db_engine: Engine) -> pd.DataFrame:
+
+    """
+    create a list of certifications, which are important to recom (business logic)
+    """
+
+    if not input_data:
+        input_data = [
+            'Certification EN 60950-1',
+            'Certification UL 60950-1',
+            'Certification EN 50155',
+            'Certification EN 60601-1',
+            'Certification UL 60601-1',
+            'Certification EN 61010-1',
+            'Certification EN 61347-1',
+            'Certification EN 60601-1-2',
+            'Certification EN 60335-1',
+            'Certification EN 62368-1',
+            'Certification UL 62368-1',
+            'Certification IEC 60950-1']
+
 def create_complete_schema(
     schema_name: str,
     db_engine: Engine,
@@ -355,7 +420,7 @@ def create_complete_schema(
             table_name="product_series",
             column_identifier="name",
             schema=schema_name,
-            db_engine=engine,
+            db_engine=db_engine,
         )
 
         upsert_table(
@@ -363,7 +428,7 @@ def create_complete_schema(
             table_name="certifications",
             column_identifier="name",
             schema=schema_name,
-            db_engine=engine,
+            db_engine=db_engine,
         )
 
         upsert_table(
@@ -371,7 +436,7 @@ def create_complete_schema(
             table_name="protections",
             column_identifier="name",
             schema=schema_name,
-            db_engine=engine,
+            db_engine=db_engine,
         )
 
         upsert_table(
@@ -381,7 +446,7 @@ def create_complete_schema(
             table_name="converters",
             column_identifier="part_number",
             schema=schema_name,
-            db_engine=engine,
+            db_engine=db_engine,
         )
 
         upsert_table(
@@ -390,7 +455,7 @@ def create_complete_schema(
             ),
             table_name="isolation_tests",
             schema=schema_name,
-            db_engine=engine,
+            db_engine=db_engine,
         )
 
         upsert_table(
@@ -399,7 +464,7 @@ def create_complete_schema(
             ),
             table_name="pins",
             schema=schema_name,
-            db_engine=engine,
+            db_engine=db_engine,
         )
 
         upsert_table(
@@ -408,7 +473,7 @@ def create_complete_schema(
             ),
             table_name="power_derating",
             schema=schema_name,
-            db_engine=engine,
+            db_engine=db_engine,
         )
 
         upsert_table(

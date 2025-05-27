@@ -7,12 +7,13 @@ select c.id,
        notes,
        ps.name as cross_left_name,
        ps_c.name as cross_right_name
-from crosslist_test.crosses as c
-inner join crosslist_test.product_series as ps on ps.id = c.product_series_id
-inner join crosslist_test.product_series as ps_c on ps_c.id = c.product_series_cross_id;
+from crosslist.crosses as c
+inner join crosslist.product_series as ps on ps.id = c.product_series_id
+inner join crosslist.product_series as ps_c on ps_c.id = c.product_series_cross_id;
 
 
-create view crosslist_test.cross_part_number as
+
+create view crosslist.cross_part_number as
 
    with cross_series as (select c.id,
        product_series_id as cross_left_id,
@@ -21,27 +22,36 @@ create view crosslist_test.cross_part_number as
        notes,
        ps.name as cross_left_name,
        ps_c.name as cross_right_name
-from crosslist_test.crosses as c
-inner join crosslist_test.product_series as ps on ps.id = c.product_series_id
-inner join crosslist_test.product_series as ps_c on ps_c.id = c.product_series_cross_id),
+from crosslist.crosses as c
+inner join crosslist.product_series as ps on ps.id = c.product_series_id
+inner join crosslist.product_series as ps_c on ps_c.id = c.product_series_cross_id),
 
         converters_certificate_mapping as (
     select
         converters.id,
         string_agg(name, ',') as certifications
-    from crosslist_test.converters
-        inner join crosslist_test.converter_certifications as cc on converters.id = cc.converter_id
-        inner join crosslist_test.certifications as c on cc.certification_id = c.id
+    from crosslist.converters
+        inner join crosslist.converter_certifications as cc on converters.id = cc.converter_id
+        inner join crosslist.certifications as c on cc.certification_id = c.id
     group by converters.id),
 
     converters_protections_mapping as (
         select
             converters.id,
         string_agg(p.name, ',') as protections
-        from crosslist_test.converters
-        inner join crosslist_test.converter_protections as cp on converters.id = cp.converter_id
-        inner join crosslist_test.protections as p on cp.protection_id = p.id
+        from crosslist.converters
+        inner join crosslist.converter_protections as cp on converters.id = cp.converter_id
+        inner join crosslist.protections as p on cp.protection_id = p.id
     group by converters.id),
+
+    converters_isolation_test_mapping as (
+    select
+        c.id,
+        string_agg(concat(it.voltage, '-', it.unit, ': ', it.duration_sec, 's'), ', ') as isolation_tests
+    from crosslist.converters as c
+             inner join crosslist.isolation_tests  as it on c.id = it.converter_id
+
+    group by c.id),
 
 product_cross as (
 select cross_series.id,
@@ -116,13 +126,15 @@ select cross_series.id,
        cmp_left.certifications as certifications_cross_left,
        cpm_left.protections as protections_cross_left,
        cmp_left.certifications as certifications_cross_right,
-       cpm_right.protections as protections_cross_right
+       cpm_right.protections as protections_cross_right,
+       cim_left.isolation_tests as isolation_test_duration_left,
+       cim_right.isolation_tests as isolation_tests_duration_right
 
 
 from cross_series
 
-inner join crosslist_test.converters as c_left on cross_series.cross_left_id = c_left.product_series_id
-inner join crosslist_test.converters as c_right on cross_series.cross_right_id = c_right.product_series_id
+inner join crosslist.converters as c_left on cross_series.cross_left_id = c_left.product_series_id and c_left.company = 'recom'
+inner join crosslist.converters as c_right on cross_series.cross_right_id = c_right.product_series_id and c_right.company <> 'recom'
 
     left outer join converters_certificate_mapping as cmp_left on cross_left_id = cmp_left.id
     left outer join converters_certificate_mapping as cmp_right on cross_right_id = cmp_left.id
@@ -130,30 +142,43 @@ inner join crosslist_test.converters as c_right on cross_series.cross_right_id =
 left outer join converters_protections_mapping as cpm_left on cross_left_id = cpm_left.id
 left outer join converters_protections_mapping as cpm_right on cross_right_id = cpm_right.id
 
+left outer join converters_isolation_test_mapping as cim_left on cross_left_id = cim_left.id
+left outer join converters_isolation_test_mapping as cim_right on cross_right_id = cim_right.id
+
 )
 
 select * from product_cross
 ;
 
-create view crosslist_test.find_crosses as
+create view crosslist.find_crosses as
 
-with converters_certificate_mapping as (
+with
+    converters_certificate_mapping as (
     select
         converters.id,
         string_agg(name, ',') as certifications
-    from crosslist_test.converters
-        inner join crosslist_test.converter_certifications as cc on converters.id = cc.converter_id
-        inner join crosslist_test.certifications as c on cc.certification_id = c.id
+    from crosslist.converters
+        inner join crosslist.converter_certifications as cc on converters.id = cc.converter_id
+        inner join crosslist.certifications as c on cc.certification_id = c.id
     group by converters.id),
 
     converters_protections_mapping as (
         select
             converters.id,
         string_agg(p.name, ',') as protections
-        from crosslist_test.converters
-        inner join crosslist_test.converter_protections as cp on converters.id = cp.converter_id
-        inner join crosslist_test.protections as p on cp.protection_id = p.id
-    group by converters.id)
+        from crosslist.converters
+        inner join crosslist.converter_protections as cp on converters.id = cp.converter_id
+        inner join crosslist.protections as p on cp.protection_id = p.id
+    group by converters.id),
+
+    converters_isolation_test_mapping as (
+        select
+            c.id,
+            string_agg(concat(it.voltage, '-', it.unit, ': ', it.duration_sec, 's'), ', ') as isolation_tests
+        from crosslist.converters as c
+                 inner join crosslist.isolation_tests  as it on c.id = it.converter_id
+        group by c.id
+        )
 
 select
 --     product_series.id,
@@ -193,11 +218,13 @@ select
 --        cpm.id,
        protections,
 --        ccm.id,
-       certifications
-from crosslist_test.product_series
-    inner join crosslist_test.converters c on product_series.id = c.product_series_id
+       certifications,
+       isolation_tests
+from crosslist.product_series
+    left outer join crosslist.converters c on product_series.id = c.product_series_id
 inner join converters_protections_mapping as cpm on c.id = cpm.id
-         inner join converters_certificate_mapping as ccm on ccm.id = c.id
+         left outer join converters_certificate_mapping as ccm on ccm.id = c.id
+left outer join converters_isolation_test_mapping as cim on cim.id = c.id
 
 --where product_series.name = 'REM1'
 ;
